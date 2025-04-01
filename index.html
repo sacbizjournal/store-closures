@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Retail closures in Sacramento in early 2025</title>
+    <meta
+      name="viewport"
+      content="initial-scale=1,maximum-scale=1,user-scalable=no"
+    />
+    <script src="https://api.tiles.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+    <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v2.3.0/mapbox-gl-geocoder.min.js"></script>
+    <link
+      href="https://api.tiles.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v2.3.0/mapbox-gl-geocoder.css"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
+      #map {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 100%;
+      }
+
+      .map-overlay {
+        position: absolute;
+        top: 30px;
+        left: 30px;
+        background: rgba(255, 255, 255, 0.8);
+        padding: 10px;
+        font-family: Arial, sans-serif;
+        font-size: 12px;
+        border-radius: 3px;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+      }
+
+      .legend-key {
+        display: inline-block;
+        width: 11px;
+        height: 11px;
+        margin-right: 5px;
+        border-radius: 50%;
+        border: 0.5px solid black;
+        opacity: 0.6;
+      }
+
+      #resetButton {
+        position: absolute;
+        top: 100px;
+        right: 10px;
+        background: #ffffff;
+        padding: 7px;
+        border-radius: 5px;
+        border: 1.2px solid #9c9c9c;
+        cursor: pointer;
+        z-index: 1;
+        font-size: 12px;
+        width: ;
+        color: #616161;
+      }
+
+      /*      #data-credit {
+        position: absolute;
+        bottom: 30px;
+        left: 10px;s
+        background: rgba(255, 255, 255, 0.8);
+        padding: 10px;
+        font-family: Arial, sans-serif;
+        font-size: 12px;
+        border-radius: 3px;
+      }*/
+      .map-title {
+        position: absolute;
+        top: 20px;
+        left: 30px;
+        transform: none;
+        background: rgba(255, 255, 255, 0.9);
+        padding: 10px 10px;
+        border-radius: 5px;
+        font-family: Arial, sans-serif;
+        font-size: 15px;
+        font-weight: bold;
+        z-index: 1; /* Lower z-index */
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+      }
+
+      /* Add this new style for popups */
+      .mapboxgl-popup {
+        z-index: 2; /* Higher z-index than title */
+      }
+
+      .title-legend {
+        display: flex;
+        gap: 20px;
+        margin-top: 8px;
+        font-size: 12px;
+        font-weight: normal;
+        font-family: Arial, sans-serif;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="map-title">
+      <div style="margin-bottom: 5px">
+        Retail store closures in Sacramento region
+      </div>
+      <div style="font-size: 12px; font-weight: normal; color: #666">
+        Click on a dot for details.
+      </div>
+      <div class="title-legend">
+        <div>
+          <span class="legend-key" style="background-color: #e23c3c"></span>
+          Uncertain future
+        </div>
+        <div>
+          <span class="legend-key" style="background-color: #e7bb08"></span>
+          Replaced or repurposed
+        </div>
+      </div>
+    </div>
+
+    <div id="map"></div>
+    <button id="resetButton">Reset</button>
+
+    <!-- Remove or comment out the old legend -->
+    <!-- <div class="map-overlay" id="legend"> ... </div> -->
+
+    <!--     <div id="data-credit">
+      <p>
+        Data Credit: Sacramento Business Journal research
+      </p>
+    </div> -->
+
+    <script>
+      mapboxgl.accessToken =
+        "pk.eyJ1IjoibWVuZ3l1YW5kb25nIiwiYSI6ImNtMDVtemowYzBtczQyaW9vb2hkZ3hmY20ifQ.0_OelpvD8lrbwMN3nfzJqw";
+      const map = new mapboxgl.Map({
+        container: "map", // Specify the container ID
+        style: "mapbox://styles/mengyuandong/cm8z0s0m4004301r1bw4k3x4h", // Specify which map style to use
+        center: [-121.341, 38.59], // Specify the starting position [lng, lat]
+        zoom: 9.5, // Specify the starting zoom
+        minZoom: 8.5,
+        maxBounds: [
+          [-122.27781353784687, 38.30575004971624], // Southwest corner [lng, lat]
+          [-120.2545346507927, 39.172204726565674], // Northeast corner [lng, lat]
+        ],
+      });
+
+      // Add zoom and rotation controls to the map.
+      map.addControl(new mapboxgl.NavigationControl());
+
+      // Get the reset button element
+      const resetButton = document.getElementById("resetButton");
+
+      // Set the default view coordinates and zoom level
+      const defaultCenter = [-121.341, 38.59];
+      const defaultZoom = 9.5;
+      const defaultPitch = 0; // no tilt
+      const defaultBearing = 0; // no rotation
+
+      // Add event listener to reset button
+      resetButton.addEventListener("click", () => {
+        map.flyTo({
+          center: defaultCenter,
+          zoom: defaultZoom,
+          pitch: defaultPitch,
+          bearing: defaultBearing,
+          essential: true, // This ensures that the animation is not interrupted
+        });
+      });
+
+      // Add popup for store locations
+      map.on("click", function (e) {
+        var features = map.queryRenderedFeatures(e.point, {
+          layers: ["store-closures-37iks1"], // match the layer ID in your Mapbox style
+        });
+
+        if (!features.length) {
+          return;
+        }
+
+        var feature = features[0];
+
+        // Use the latitude and longitude from the dataset
+        var lat = feature.properties.latitude;
+        var lng = feature.properties.longitude;
+
+        new mapboxgl.Popup({ offset: [0, -15] })
+          .setLngLat([lng, lat]) // Set the popup position using the longitude and latitude
+          .setHTML(
+            "<b>" +
+              feature.properties.store +
+              "</b>" +
+              "</br>" +
+              feature.properties.address +
+              "</br>" +
+              '<span style="color: #e7bb08; font-style: italic;">' +
+              feature.properties.status +
+              "</span>"
+          )
+          .addTo(map);
+      });
+    </script>
+  </body>
+</html>
